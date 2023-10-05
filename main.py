@@ -1,6 +1,10 @@
 
 from __future__ import print_function
 
+import torch
+print(torch.cuda.is_available())
+
+
 import argparse
 import os
 import time, platform
@@ -8,6 +12,7 @@ import time, platform
 import cv2
 import numpy as np
 import torch
+
 import torch.optim as optim
 from torch.utils.data import DataLoader
 # from thop import profile
@@ -126,6 +131,7 @@ def validate_one_epoch(epoch, dataloader, model, device, output_dir, arg=None):
                                      output_dir,
                                      file_names,img_shape=image_shape,
                                      arg=arg)
+    print("validate")
 
 
 def test(checkpoint_path, dataloader, model, device, output_dir, args):
@@ -227,7 +233,6 @@ def parse_args():
                         help='Choose a dataset for testing: 0 - 8')
     # ----------- test -------0--
 
-
     TEST_DATA = DATASET_NAMES[parser.parse_args().choose_test_data] # max 8
     test_inf = dataset_info(TEST_DATA, is_linux=IS_LINUX)
     test_dir = test_inf['data_dir']
@@ -274,6 +279,10 @@ def parse_args():
     parser.add_argument('--is_testing',type=bool,
                         default=is_testing,
                         help='Script in testing mode.')
+    # parser.add_argument('--predict_all',
+    #                     type=bool,
+    #                     default=False,
+    #                     help='True: Generate all LDC outputs in all_edges ')
     parser.add_argument('--double_img',
                         type=bool,
                         default=False,
@@ -305,7 +314,7 @@ def parse_args():
 
     parser.add_argument('--epochs',
                         type=int,
-                        default=40,
+                        default=20,
                         metavar='N',
                         help='Number of training epochs (default: 25).')
     parser.add_argument('--lr', default=5e-5, type=float,
@@ -352,10 +361,11 @@ def parse_args():
                         type=bool,
                         help='If true crop training images, else resize images to match image width and height.')
     parser.add_argument('--mean_pixel_values',
-                        default=[160.913,160.275,162.239,137.86], #########################zk
+                        default=[160.913,160.275,162.239,137.86], #[160.913,160.275,162.239,137.86], #########################zk
                         type=float)  # [103.939,116.779,123.68,137.86] [104.00699, 116.66877, 122.67892]
     # BRIND mean = [104.007, 116.669, 122.679, 137.86]
     # BIPED mean_bgr processed [160.913,160.275,162.239,137.86]
+    # BIPED_mean = [114.510, 114.451, 117.230, 137.86]
     args = parser.parse_args()
     return args
 
@@ -366,6 +376,7 @@ def main(args):
     print(f"Number of GPU's available: {torch.cuda.device_count()}")
     print(f"Pytorch version: {torch.__version__}")
 
+    print(torch.cuda.is_available())
     # Tensorboard summary writer
 
     tb_writer = None
@@ -387,8 +398,9 @@ def main(args):
         info_txt.close()
 
     # Get computing device
-    device = torch.device('cpu' if torch.cuda.device_count() == 0
-                          else 'cuda')
+    device = torch.device('cpu' if torch.cuda.device_count() == 0 else 'cuda')
+
+    # device = torch.device('cpu' if torch.cuda.is_available() else 'cuda')
 
     # Instantiate model and move it to the computing device
     model = LDC().to(device)
@@ -425,6 +437,8 @@ def main(args):
                                 batch_size=1,
                                 shuffle=False,
                                 num_workers=args.workers)
+    # print(args.input_val_dir)
+    # print("HHH")
     # Testing
     if args.is_testing:
 

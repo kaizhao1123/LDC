@@ -24,6 +24,7 @@ DATASET_NAMES = [
     'CLASSIC'
 ]  # 8
 
+# BIPED_mean = [114.510, 114.451,117.230,137.86]
 
 def dataset_info(dataset_name, is_linux=False):
     if is_linux:
@@ -178,8 +179,8 @@ def dataset_info(dataset_name, is_linux=False):
                          'yita': 0.3},
             'BIPED': {'img_height': 720,  # 720
                       'img_width': 1280,  # 1280
-                      'test_list': 'test_pair.lst',
-                      'train_list': 'train_rgb.lst',
+                      'test_list': 'test_pair.lst',     ######test_pair########zk
+                      'train_list': 'train_pair.lst',
                       'data_dir': 'C:/Users/Kai Zhao/PycharmProjects/LDC/dataset/BIPED',  # WIN: '../.../dataset/BIPED/edges'
                       'yita': 0.5},
             'BIPED-B2': {'img_height': 720,  # 720
@@ -303,10 +304,10 @@ class TestDataset(Dataset):
         file_name = os.path.splitext(img_name)[0] + ".png"
 
         # base dir
-        if self.test_data.upper() == 'BIPED':
+        if self.test_data.upper() == 'BIPED':  ######BIPED####zk
             img_dir = os.path.join(self.data_root, 'imgs', 'test')
             gt_dir = os.path.join(self.data_root, 'edge_maps', 'test')
-        elif self.test_data.upper() == 'CLASSIC':
+        elif self.test_data.upper() == 'CLASSIC':   ######CLASSIC####zk
             img_dir = self.data_root
             gt_dir = None
         else:
@@ -315,7 +316,7 @@ class TestDataset(Dataset):
 
         # load data
         image = cv2.imread(os.path.join(img_dir, image_path), cv2.IMREAD_COLOR)
-        if not self.test_data == "CLASSIC":
+        if not self.test_data == "CLASSIC":   #####not#####zk
             label = cv2.imread(os.path.join(
                 gt_dir, label_path), cv2.IMREAD_COLOR)
         else:
@@ -343,16 +344,14 @@ class TestDataset(Dataset):
             gt = cv2.resize(gt, (self.args.test_img_width, self.args.test_img_height))  # 512
 
         # Make sure images and labels are divisible by 2^4=16
-        elif img.shape[0] % 16 != 0 or img.shape[1] % 16 != 0:
-            img_width = ((img.shape[1] // 16) + 1) * 16
-            img_height = ((img.shape[0] // 16) + 1) * 16
+        elif img.shape[0] % 8 != 0 or img.shape[1] % 8 != 0:
+            img_width = ((img.shape[1] // 8) + 1) * 8
+            img_height = ((img.shape[0] // 8) + 1) * 8
             img = cv2.resize(img, (img_width, img_height))
             gt = cv2.resize(gt, (img_width, img_height))
         else:
-            img_width = self.args.test_img_width
-            img_height = self.args.test_img_height
-            img = cv2.resize(img, (img_width, img_height))
-            gt = cv2.resize(gt, (img_width, img_height))
+            pass
+            #
         # # For FPS
         # img = cv2.resize(img, (496,320))
         # if self.yita is not None:
@@ -380,7 +379,7 @@ class TestDataset(Dataset):
 class BipedDataset(Dataset):
     train_modes = ['train', 'test', ]
     dataset_types = ['rgbr', ]
-    data_types = ['real', ] # #### no 'aug' ###
+    data_types = ['aug', ] # #### no 'aug' ###
 
     def __init__(self,
                  data_root,
@@ -397,7 +396,7 @@ class BipedDataset(Dataset):
         self.data_root = data_root
         self.train_mode = train_mode
         self.dataset_type = dataset_type
-        self.data_type = 'real'  # be aware that this might change in the future
+        self.data_type = 'aug'  # be aware that this might change in the future
         self.img_height = img_height
         self.img_width = img_width
         self.mean_bgr = mean_bgr
@@ -414,28 +413,35 @@ class BipedDataset(Dataset):
         data_root = os.path.abspath(self.data_root)
         sample_indices = []
         if self.arg.train_data.lower() == 'biped':
+       # if self.arg.train_data.lower() == 'classic': ############zk
 
             images_path = os.path.join(data_root,
                                        'edges/imgs',
                                        self.train_mode,
-                                       self.dataset_type)
-                                       # self.data_type)
+                                       self.dataset_type,
+                                       self.data_type)
             labels_path = os.path.join(data_root,
                                        'edges/edge_maps',
                                        self.train_mode,
-                                       self.dataset_type)
-                                       # self.data_type)
+                                       self.dataset_type,
+                                       self.data_type)
 
+            print(images_path)
             for directory_name in os.listdir(images_path):
 
                 image_directories = os.path.join(images_path, directory_name)
 
                 for file_name_ext in os.listdir(image_directories):
                     file_name = os.path.splitext(file_name_ext)[0]
+                    # print(file_name)
                     sample_indices.append(
                         (os.path.join(images_path, directory_name, file_name + '.jpg'),
                          os.path.join(labels_path, directory_name, file_name + '.png'),)
                     )
+                    # sample_indices.append(
+                    #     (os.path.join(images_path, directory_name, file_name + '.bmp'),
+                    #      os.path.join(labels_path, directory_name, file_name + '.jpg'),)
+                    # )
         else:
             file_path = os.path.join(data_root, self.arg.train_list)
             if self.arg.train_data.lower() == 'bsds':
@@ -484,6 +490,7 @@ class BipedDataset(Dataset):
         gt /= 255.  # for LDC input and BDCN
 
         img = np.array(img, dtype=np.float32)
+
         img -= self.mean_bgr
         i_h, i_w, _ = img.shape
         #  400 for BIPEd and 352 for BSDS check with 384

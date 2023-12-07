@@ -517,6 +517,8 @@ def main(args):
         # Save model after end of every epoch
         torch.save(model.module.state_dict() if hasattr(model, "module") else model.state_dict(),
                    os.path.join(output_dir_epoch, '{0}_model.pth'.format(epoch)))
+
+        # save data of the training, to display in tensorboard after the training completed.
         if tb_writer is not None:
             tb_writer.add_scalar('loss',
                                  avg_loss,
@@ -529,6 +531,7 @@ def main(args):
     print(num_param)
     print('-------------------------------------------------------')
 
+
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+    # args = parse_args()
+    # main(args)
